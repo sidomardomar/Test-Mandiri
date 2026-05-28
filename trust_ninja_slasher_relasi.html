@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trust Ninja: Slasher Relasi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Orbitron for Cyberpunk feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cyber: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif'],
+                    },
+                    colors: {
+                        neonCyan: '#00f3ff',
+                        neonPink: '#ff003c',
+                        neonPurple: '#bc13fe',
+                        darkBg: '#0a0a0c',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            overflow-x: hidden;
+            touch-action: pan-y; /* Allow vertical scroll by default */
+        }
+        
+        body.game-active {
+            overflow: hidden; /* Prevent scrolling during gameplay */
+            touch-action: none;
+        }
+
+        .bg-cyberpunk {
+            background-image: linear-gradient(rgba(10, 10, 12, 0.85), rgba(10, 10, 12, 0.95)), url('https://i.imgur.com/eDVZVJg.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .neon-text-cyan {
+            text-shadow: 0 0 5px #00f3ff, 0 0 10px #00f3ff, 0 0 20px #00f3ff;
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 5px #ff003c, 0 0 10px #ff003c, 0 0 20px #ff003c;
+        }
+        
+        .neon-border {
+            border: 2px solid #00f3ff;
+            box-shadow: 0 0 10px #00f3ff inset, 0 0 10px #00f3ff;
+        }
+
+        .btn-cyber {
+            position: relative;
+            background: transparent;
+            color: #00f3ff;
+            text-transform: uppercase;
+            border: 2px solid #00f3ff;
+            padding: 12px 24px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px #00f3ff inset, 0 0 5px #00f3ff;
+            overflow: hidden;
+        }
+        .btn-cyber:hover {
+            background: #00f3ff;
+            color: #000;
+            box-shadow: 0 0 20px #00f3ff inset, 0 0 20px #00f3ff;
+        }
+
+        .screen {
+            display: none;
+            min-height: 100vh;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            z-index: 20;
+            pointer-events: none; /* Let clicks pass to canvas */
+        }
+
+        .flash-red {
+            animation: flashRed 0.5s ease-out;
+        }
+        @keyframes flashRed {
+            0% { background-color: rgba(255, 0, 60, 0.8); }
+            100% { background-color: transparent; }
+        }
+
+        .input-cyber {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid #00f3ff;
+            color: #fff;
+            padding: 10px;
+            width: 100%;
+            font-family: 'Rajdhani', sans-serif;
+            outline: none;
+        }
+        .input-cyber:focus {
+            box-shadow: 0 0 10px #00f3ff;
+        }
+
+        /* Glitch effect for title */
+        .glitch {
+            position: relative;
+        }
+        .glitch::before, .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8;
+        }
+        .glitch::before {
+            left: 2px;
+            text-shadow: -2px 0 #ff003c;
+            animation: glitch-anim 2s infinite linear alternate-reverse;
+        }
+        .glitch::after {
+            left: -2px;
+            text-shadow: -2px 0 #00f3ff;
+            animation: glitch-anim 3s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim {
+            0% { clip-path: inset(20% 0 80% 0); }
+            20% { clip-path: inset(60% 0 10% 0); }
+            40% { clip-path: inset(40% 0 50% 0); }
+            60% { clip-path: inset(80% 0 5% 0); }
+            80% { clip-path: inset(10% 0 70% 0); }
+            100% { clip-path: inset(30% 0 40% 0); }
+        }
+
+        /* Badge animations */
+        .badge {
+            transition: transform 0.3s;
+        }
+        .badge:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+    </style>
+</head>
+<body class="bg-cyberpunk font-rajdhani text-lg">
+
+    <div id="app" class="relative w-full max-w-2xl mx-auto bg-darkBg/60 min-h-screen shadow-[0_0_50px_rgba(0,243,255,0.2)]">
+        
+        <!-- ================= SCREEN 1: GATEWAY & LOGIN ================= -->
+        <div id="screen-gateway" class="screen active p-6 text-center">
+            <h1 class="font-cyber text-4xl md:text-5xl font-black mb-2 glitch text-white" data-text="TRUST NINJA">TRUST NINJA</h1>
+            <h2 class="font-cyber text-xl md:text-2xl text-neonPink mb-8 tracking-widest neon-text-pink">SLASHER RELASI</h2>
+            
+            <div class="neon-border bg-black/80 p-6 rounded-lg w-full max-w-sm mb-8 text-left">
+                <p class="text-gray-300 text-sm mb-4 italic">"Balance yang tinggi dalam Rekening Bank Emosi menciptakan toleransi, rasa aman, dan mempermudah kerja sama." - The Emotional Bank Account</p>
+                
+                <div class="mb-4">
+                    <label class="block font-cyber text-xs text-neonCyan mb-1">NAMA LENGKAP</label>
+                    <input type="text" id="playerName" class="input-cyber rounded" placeholder="Masukkan Nama Anda..." required>
+                </div>
+                <div class="mb-6">
+                    <label class="block font-cyber text-xs text-neonCyan mb-1">NIK / ID KARYAWAN</label>
+                    <input type="text" id="playerNIK" class="input-cyber rounded" placeholder="Masukkan NIK..." required>
+                </div>
+                
+                <button onclick="goToBriefing()" class="btn-cyber w-full rounded">Masuk ke Sistem</button>
+            </div>
+            
+            <p class="text-xs text-gray-500 font-cyber mt-auto">Education & Training Dept. © 2026</p>
+        </div>
+
+        <!-- ================= SCREEN 2: MISSION BRIEFING ================= -->
+        <div id="screen-briefing" class="screen p-6">
+            <div class="w-full max-w-md">
+                <h2 class="font-cyber text-2xl text-neonCyan neon-text-cyan mb-4 text-center">MISSION BRIEFING</h2>
+                
+                <div class="bg-black/80 border border-neonPurple p-5 rounded-lg mb-6 shadow-[0_0_15px_rgba(188,19,254,0.3)]">
+                    <h3 class="font-cyber text-neonPink mb-2 text-xl">The Hook (WHY)</h3>
+                    <p class="text-gray-300 leading-relaxed mb-4 text-sm">
+                        Setiap interaksi di kantor adalah sebuah transaksi kepercayaan. Apakah kamu membangunnya (Setoran) atau malah menghancurkannya (Tarikan)? Buktikan refleks emosionalmu!
+                    </p>
+                    
+                    <h3 class="font-cyber text-neonCyan mb-2 text-lg">Objektif:</h3>
+                    <ul class="list-disc pl-5 text-gray-300 text-sm mb-4 space-y-1">
+                        <li>Bertahan selama <strong class="text-white">60 detik</strong>.</li>
+                        <li>Pertahankan Saldo EBA (Trust Balance) tetap positif.</li>
+                    </ul>
+
+                    <h3 class="font-cyber text-neonCyan mb-2 text-lg">Peraturan:</h3>
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 rounded-full border-2 border-neonCyan flex items-center justify-center font-cyber text-xs mr-3 shadow-[0_0_10px_#00f3ff]">Teks</div>
+                        <p class="text-sm text-gray-300"><strong class="text-neonCyan">TEBAS (Swipe)</strong> perilaku positif (Setoran) untuk mendapat +10 Balance.</p>
+                    </div>
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 rounded-full border-2 border-neonCyan flex items-center justify-center font-cyber text-xs mr-3">Teks</div>
+                        <p class="text-sm text-gray-300"><strong class="text-neonPink">BIARKAN JATUH</strong> perilaku negatif (Tarikan). Jika ditebas: <strong class="text-red-500">-20 Balance!</strong></p>
+                    </div>
+                    <p class="text-xs text-yellow-400 mt-3 italic text-center">*Tip: Semua bubble berwarna sama. BACA sebelum menebas!</p>
+                </div>
+                
+                <button onclick="startGame()" class="btn-cyber w-full rounded text-xl animate-pulse">INITIATE SEQUENCE [Mulai]</button>
+                <button onclick="showScreen('gateway')" class="mt-4 text-gray-500 text-sm w-full text-center hover:text-white transition">Kembali</button>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 3: GAME EXECUTION ================= -->
+        <div id="screen-game" class="screen relative w-full overflow-hidden bg-black/90">
+            <!-- HUD -->
+            <div class="hud flex flex-col pointer-events-none">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="font-cyber text-xl font-bold">
+                        <span class="text-gray-400 text-sm">BALANCE:</span> 
+                        <span id="scoreDisplay" class="text-neonCyan neon-text-cyan">0</span>
+                    </div>
+                    <div class="font-cyber text-xl font-bold">
+                        <span class="text-gray-400 text-sm">TIME:</span> 
+                        <span id="timeDisplay" class="text-white">60</span>s
+                    </div>
+                </div>
+                
+                <!-- Gamification Progress Bar -->
+                <div class="w-full bg-gray-800 rounded-full h-3 border border-gray-600 mb-2">
+                    <div id="progressBar" class="bg-neonPurple h-2.5 rounded-full shadow-[0_0_10px_#bc13fe]" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-400 font-cyber">
+                    <span>Target: Bertahan</span>
+                    <span id="progressText">0%</span>
+                </div>
+            </div>
+
+            <!-- Mute Button (pointer events enabled) -->
+            <button id="muteBtn" onclick="toggleMute()" class="absolute bottom-5 right-5 z-20 w-12 h-12 rounded-full border-2 border-gray-500 bg-black/50 flex items-center justify-center pointer-events-auto">
+                <svg id="icon-sound-on" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5 10v4a2 2 0 002 2h2.586l3.707 3.707A1 1 0 0015 19V5a1 1 0 00-1.707-.707L9.586 10H7a2 2 0 00-2 2z"></path></svg>
+                <svg id="icon-sound-off" class="w-6 h-6 text-red-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+            </button>
+            
+            <!-- Badges Display (In-game) -->
+            <div id="inGameBadges" class="absolute bottom-5 left-5 z-20 flex gap-2 pointer-events-none">
+                <!-- Badges will be appended here -->
+            </div>
+
+            <!-- The Game Canvas -->
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- Visual Effect Overlay -->
+            <div id="fxOverlay" class="absolute inset-0 z-15 pointer-events-none"></div>
+        </div>
+
+        <!-- ================= SCREEN 4: POST-ACTION DEBRIEF ================= -->
+        <div id="screen-result" class="screen p-6 relative">
+            <div class="w-full max-w-lg bg-black/90 border border-gray-700 p-6 rounded-xl shadow-2xl relative z-10 max-h-[90vh] overflow-y-auto">
+                <h2 id="resultTitle" class="font-cyber text-3xl mb-1 text-center neon-text-cyan">MISSION COMPLETE</h2>
+                <p id="resultPlayerInfo" class="text-center text-gray-400 text-sm mb-4">Operator: [Nama] - [NIK]</p>
+                
+                <div class="flex justify-center mb-6">
+                    <div class="text-center bg-gray-900 border border-gray-700 p-4 rounded-lg min-w-[200px]">
+                        <p class="font-cyber text-gray-400 text-xs">FINAL BALANCE (EBA)</p>
+                        <p id="finalScore" class="font-cyber text-4xl font-bold text-white">0</p>
+                    </div>
+                </div>
+
+                <!-- Positive Reinforcement / Status -->
+                <div id="resultStatus" class="p-3 mb-6 rounded text-center font-bold text-sm">
+                    Status Message Here
+                </div>
+
+                <!-- Badges Earned -->
+                <div class="mb-6">
+                    <h3 class="font-cyber text-sm text-neonCyan mb-3 border-b border-gray-800 pb-1">LENCANA DIRAIH (GAMIFICATION)</h3>
+                    <div id="badgesContainer" class="flex flex-wrap gap-3 justify-center">
+                        <!-- Badges injected here -->
+                    </div>
+                </div>
+
+                <!-- Feedback / History -->
+                <div class="mb-6">
+                    <h3 class="font-cyber text-sm text-neonCyan mb-3 border-b border-gray-800 pb-1">ANALISIS TINDAKAN (DEBRIEF)</h3>
+                    <div id="feedbackList" class="space-y-2 text-sm max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Feedback items injected here -->
+                    </div>
+                </div>
+
+                <button onclick="resetGame()" class="btn-cyber w-full rounded mt-4">REBOOT SYSTEM (Main Lagi)</button>
+            </div>
+            
+            <!-- Confetti Canvas -->
+            <canvas id="confettiCanvas" class="absolute inset-0 z-0 pointer-events-none"></canvas>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        /* ================= INSTRUCTIONAL CONTENT ================= */
+        // 10 Materi Pokok: 5 Deposit (Positif), 5 Withdrawal (Negatif)
+        const learningMaterials = [
+            { text: "Menepati Janji", type: "deposit", desc: "Membangun kredibilitas dan rasa aman (Setoran)." },
+            { text: "Apresiasi Tulus", type: "deposit", desc: "Membuat rekan merasa dihargai (Setoran)." },
+            { text: "Mendengar Aktif", type: "deposit", desc: "Memahami sebelum dipahami (Setoran)." },
+            { text: "Meminta Maaf", type: "deposit", desc: "Menunjukkan integritas saat salah (Setoran)." },
+            { text: "Perjelas Harapan", type: "deposit", desc: "Mencegah miskomunikasi di awal (Setoran)." },
+            { text: "Berbohong", type: "withdrawal", desc: "Menghancurkan integritas secara instan (Tarikan)." },
+            { text: "Gosip Kantor", type: "withdrawal", desc: "Merusak kepercayaan dari belakang (Tarikan)." },
+            { text: "Menyela Bicara", type: "withdrawal", desc: "Menunjukkan rasa tidak menghargai (Tarikan)." },
+            { text: "Ingkar Janji", type: "withdrawal", desc: "Membuat orang lain skeptis pada Anda (Tarikan)." },
+            { text: "Abaikan Feedback", type: "withdrawal", desc: "Menutup ruang pertumbuhan dan komunikasi (Tarikan)." }
+        ];
+
+        /* ================= GAME STATE & VARIABLES ================= */
+        let gameState = {
+            playerName: '',
+            playerNIK: '',
+            score: 0,
+            timeLeft: 60,
+            maxTime: 60,
+            isPlaying: false,
+            history: [],
+            badges: { 
+                survivor: false, 
+                highScore: false, 
+                perfectDeposit: false 
+            }
+        };
+
+        let lastTime = 0;
+        let spawnTimer = 0;
+        let spawnInterval = 1200; // spawn every 1.2s initially
+        
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let bubbles = [];
+        let particles = [];
+        
+        // Touch/Mouse handling
+        let isDrawing = false;
+        let slashPath = [];
+        let canvasRect;
+
+        /* ================= AUDIO SYSTEM (WEB AUDIO API) ================= */
+        const AudioSys = {
+            ctx: null,
+            masterGain: null,
+            isMuted: false,
+            bgmOscillators: [],
+            bgmInterval: null,
+            
+            init: function() {
+                if(!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = 0.3; // Default volume
+                    this.masterGain.connect(this.ctx.destination);
+                }
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            
+            toggleMute: function() {
+                this.isMuted = !this.isMuted;
+                if(this.masterGain) {
+                    this.masterGain.gain.value = this.isMuted ? 0 : 0.3;
+                }
+                document.getElementById('icon-sound-on').classList.toggle('hidden', this.isMuted);
+                document.getElementById('icon-sound-off').classList.toggle('hidden', !this.isMuted);
+            },
+
+            playTone: function(freq, type, duration, volMod = 1) {
+                if(this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                
+                gain.gain.setValueAtTime(volMod, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+
+            sfxGoodSlash: function() {
+                // High quick sweep
+                if(this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.1);
+                
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
+                
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            },
+
+            sfxBadSlash: function() {
+                // Low harsh sound
+                if(this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.3);
+                
+                gain.gain.setValueAtTime(0.7, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            },
+
+            sfxGameOver: function() {
+                this.playTone(300, 'sawtooth', 0.5, 0.5);
+                setTimeout(() => this.playTone(250, 'sawtooth', 0.5, 0.5), 200);
+                setTimeout(() => this.playTone(200, 'sawtooth', 1.0, 0.5), 400);
+            },
+
+            sfxWin: function() {
+                this.playTone(440, 'square', 0.2, 0.3); // A
+                setTimeout(() => this.playTone(554, 'square', 0.2, 0.3), 150); // C#
+                setTimeout(() => this.playTone(659, 'square', 0.4, 0.3), 300); // E
+                setTimeout(() => this.playTone(880, 'square', 0.6, 0.3), 450); // A high
+            },
+
+            startBGM: function() {
+                this.stopBGM();
+                if(this.isMuted || !this.ctx) return;
+                
+                // Simple 8-bit style arpeggio loop
+                const notes = [220, 277, 330, 440, 330, 277];
+                let step = 0;
+                
+                this.bgmInterval = setInterval(() => {
+                    if(this.isMuted) return;
+                    this.playTone(notes[step], 'square', 0.15, 0.1); // low volume
+                    step = (step + 1) % notes.length;
+                }, 200);
+            },
+
+            stopBGM: function() {
+                if(this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
+        };
+
+        function toggleMute() {
+            AudioSys.toggleMute();
+        }
+
+        /* ================= UI NAVIGATION ================= */
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + screenId).classList.add('active');
+            
+            // Manage body overflow for game canvas
+            if(screenId === 'game') {
+                document.body.classList.add('game-active');
+            } else {
+                document.body.classList.remove('game-active');
+            }
+        }
+
+        function goToBriefing() {
+            const name = document.getElementById('playerName').value.trim();
+            const nik = document.getElementById('playerNIK').value.trim();
+            
+            if(!name || !nik) {
+                alert("Harap masukkan Nama dan NIK untuk keperluan pencatatan LMS.");
+                return;
+            }
+            
+            gameState.playerName = name;
+            gameState.playerNIK = nik;
+            showScreen('briefing');
+        }
+
+        /* ================= GAME ENGINE ================= */
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvasRect = canvas.getBoundingClientRect();
+        }
+
+        class Bubble {
+            constructor(textObj) {
+                this.data = textObj;
+                this.radius = Math.min(window.innerWidth * 0.15, 60); // Responsive size
+                this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+                this.y = canvas.height + this.radius;
+                
+                // Physics - parabolic jump
+                this.vx = (Math.random() - 0.5) * 3; 
+                // Adjust initial velocity based on screen height to ensure they reach middle/top
+                let jumpPower = (canvas.height / 100) * 1.2; 
+                this.vy = -(jumpPower + Math.random() * 2 + 5); 
+                
+                this.active = true;
+                this.slashed = false;
+                
+                // All bubbles look the same visually to force reading
+                this.color = '#00f3ff'; 
+            }
+
+            update() {
+                if(!this.active) return;
+                
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.15; // Gravity
+
+                // Wall bounce (left/right)
+                if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+                    this.vx *= -1;
+                    this.x = Math.max(this.radius, Math.min(this.x, canvas.width - this.radius));
+                }
+
+                // If it falls below screen
+                if (this.y - this.radius > canvas.height && this.vy > 0) {
+                    this.active = false;
+                    // If player lets a 'deposit' fall, maybe small penalty? Nah, keep it simple.
+                    // Just record it wasn't interacted with.
+                }
+            }
+
+            draw(ctx) {
+                if(!this.active || this.slashed) return;
+
+                // Draw Bubble Glow
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(10, 10, 12, 0.9)';
+                ctx.fill();
+                
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.stroke();
+                ctx.shadowBlur = 0; // Reset shadow for text
+
+                // Draw Text
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold ' + (this.radius * 0.25) + 'px Rajdhani';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Simple word wrap for 2 words
+                let words = this.data.text.split(' ');
+                if(words.length > 1) {
+                    ctx.fillText(words[0], this.x, this.y - 10);
+                    ctx.fillText(words.slice(1).join(' '), this.x, this.y + 10);
+                } else {
+                    ctx.fillText(this.data.text, this.x, this.y);
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() - 0.5) * 10;
+                this.life = 1.0;
+                this.color = color;
+                this.size = Math.random() * 5 + 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.05;
+            }
+            draw(ctx) {
+                if(this.life <= 0) return;
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function spawnBubble() {
+            // Pick a random material
+            const material = learningMaterials[Math.floor(Math.random() * learningMaterials.length)];
+            bubbles.push(new Bubble(material));
+        }
+
+        function createExplosion(x, y, type) {
+            let color = type === 'deposit' ? '#00f3ff' : '#ff003c';
+            for(let i=0; i<15; i++){
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function handleSlash(x, y) {
+            // Check collision with bubbles
+            for(let i = bubbles.length - 1; i >= 0; i--) {
+                let b = bubbles[i];
+                if(b.active && !b.slashed) {
+                    // Distance check
+                    const dist = Math.hypot(b.x - x, b.y - y);
+                    if(dist < b.radius + 15) { // +15 forgiveness padding
+                        b.slashed = true;
+                        b.active = false;
+                        
+                        createExplosion(b.x, b.y, b.data.type);
+
+                        // Game Logic
+                        if(b.data.type === 'deposit') {
+                            // Correct
+                            AudioSys.sfxGoodSlash();
+                            gameState.score += 10;
+                            showFloatingText("+10", b.x, b.y, '#00f3ff');
+                            recordHistory(b.data, 'slashed', true);
+                            updateHUD();
+                        } else {
+                            // Wrong! Penalty
+                            AudioSys.sfxBadSlash();
+                            gameState.score -= 20;
+                            showFloatingText("-20", b.x, b.y, '#ff003c');
+                            recordHistory(b.data, 'slashed', false);
+                            flashRedScreen();
+                            updateHUD();
+                            
+                            // Instant Lose Condition
+                            if(gameState.score < 0) {
+                                triggerGameOver("TRUST BANKRUPT (Saldo Minus)");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Interaction Listeners for Canvas ---
+        function getPointerPos(e) {
+            if(!canvasRect) canvasRect = canvas.getBoundingClientRect();
+            if (e.touches) {
+                return { x: e.touches[0].clientX - canvasRect.left, y: e.touches[0].clientY - canvasRect.top };
+            }
+            return { x: e.clientX - canvasRect.left, y: e.clientY - canvasRect.top };
+        }
+
+        function startInteraction(e) {
+            if(!gameState.isPlaying) return;
+            e.preventDefault();
+            isDrawing = true;
+            slashPath = [];
+            const pos = getPointerPos(e);
+            slashPath.push(pos);
+            handleSlash(pos.x, pos.y);
+        }
+
+        function moveInteraction(e) {
+            if(!gameState.isPlaying || !isDrawing) return;
+            e.preventDefault();
+            const pos = getPointerPos(e);
+            slashPath.push(pos);
+            if(slashPath.length > 10) slashPath.shift(); // Keep tail short
+            handleSlash(pos.x, pos.y);
+        }
+
+        function endInteraction(e) {
+            if(!gameState.isPlaying) return;
+            e.preventDefault();
+            isDrawing = false;
+            slashPath = [];
+        }
+
+        // Setup Events
+        canvas.addEventListener('mousedown', startInteraction);
+        canvas.addEventListener('mousemove', moveInteraction);
+        canvas.addEventListener('mouseup', endInteraction);
+        canvas.addEventListener('touchstart', startInteraction, {passive: false});
+        canvas.addEventListener('touchmove', moveInteraction, {passive: false});
+        canvas.addEventListener('touchend', endInteraction);
+
+
+        /* ================= GAME LOOP & MECHANICS ================= */
+
+        let floatingTexts = [];
+        function showFloatingText(text, x, y, color) {
+            floatingTexts.push({text, x, y, color, life: 1.0});
+        }
+
+        function flashRedScreen() {
+            const overlay = document.getElementById('fxOverlay');
+            overlay.classList.remove('flash-red');
+            void overlay.offsetWidth; // trigger reflow
+            overlay.classList.add('flash-red');
+        }
+
+        function updateHUD() {
+            document.getElementById('scoreDisplay').innerText = gameState.score;
+            document.getElementById('scoreDisplay').className = gameState.score >= 0 ? "text-neonCyan neon-text-cyan" : "text-neonPink neon-text-pink";
+            
+            // Progress Bar (Time based)
+            let progress = ((gameState.maxTime - gameState.timeLeft) / gameState.maxTime) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').innerText = `${Math.floor(progress)}%`;
+
+            checkBadgesInGame();
+        }
+
+        function checkBadgesInGame() {
+            const badgesDiv = document.getElementById('inGameBadges');
+            
+            if(gameState.score >= 50 && !gameState.badges.highScore) {
+                gameState.badges.highScore = true;
+                showFloatingText("BADGE: EBA Master!", canvas.width/2, canvas.height/4, '#bc13fe');
+                badgesDiv.innerHTML += `<div class="bg-neonPurple/20 border border-neonPurple px-2 py-1 rounded text-xs text-white badge">🏅 EBA Master</div>`;
+            }
+        }
+
+        function recordHistory(material, action, isCorrect) {
+            // Keep track of what player did for debrief
+            gameState.history.push({
+                item: material.text,
+                type: material.type,
+                desc: material.desc,
+                action: action,
+                isCorrect: isCorrect
+            });
+        }
+
+        let timeInterval;
+        function gameLoop(timestamp) {
+            if(!gameState.isPlaying) return;
+
+            // Calculate deltaTime for smooth animations if needed (ignoring for simplicity in physics)
+            
+            // Clear Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Spawn Logic
+            if(timestamp - lastTime > spawnInterval) {
+                spawnBubble();
+                lastTime = timestamp;
+                // Slowly increase difficulty
+                if(spawnInterval > 600) spawnInterval -= 20; 
+            }
+
+            // Draw Slash Path
+            if(isDrawing && slashPath.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(slashPath[0].x, slashPath[0].y);
+                for(let i=1; i<slashPath.length; i++) {
+                    ctx.lineTo(slashPath[i].x, slashPath[i].y);
+                }
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00f3ff';
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // Update & Draw Bubbles
+            for(let i = bubbles.length - 1; i >= 0; i--) {
+                let b = bubbles[i];
+                b.update();
+                b.draw(ctx);
+                // Remove inactive
+                if(!b.active && !b.slashed) {
+                    // If missed a withdrawal, it's correct! (We let it fall)
+                    if(b.data.type === 'withdrawal') {
+                        recordHistory(b.data, 'ignored', true);
+                    } else if (b.data.type === 'deposit') {
+                        // Missed a deposit
+                        recordHistory(b.data, 'ignored', false);
+                    }
+                    bubbles.splice(i, 1);
+                } else if(b.slashed) {
+                    bubbles.splice(i, 1);
+                }
+            }
+
+            // Particles
+            for(let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw(ctx);
+                if(p.life <= 0) particles.splice(i, 1);
+            }
+
+            // Floating Texts
+            for(let i = floatingTexts.length - 1; i >= 0; i--) {
+                let ft = floatingTexts[i];
+                ft.y -= 2;
+                ft.life -= 0.02;
+                ctx.globalAlpha = Math.max(0, ft.life);
+                ctx.fillStyle = ft.color;
+                ctx.font = 'bold 24px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.globalAlpha = 1.0;
+                if(ft.life <= 0) floatingTexts.splice(i, 1);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            // Init Audio Context (Must be done on user gesture)
+            AudioSys.init();
+            
+            // Reset state
+            gameState.score = 0;
+            gameState.timeLeft = gameState.maxTime;
+            gameState.isPlaying = true;
+            gameState.history = [];
+            gameState.badges = { survivor: false, highScore: false, perfectDeposit: false };
+            
+            bubbles = [];
+            particles = [];
+            floatingTexts = [];
+            spawnInterval = 1200;
+            document.getElementById('inGameBadges').innerHTML = '';
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            showScreen('game');
+            updateHUD();
+            
+            AudioSys.startBGM();
+
+            // Timer
+            timeInterval = setInterval(() => {
+                gameState.timeLeft--;
+                document.getElementById('timeDisplay').innerText = gameState.timeLeft;
+                updateHUD();
+                
+                if(gameState.timeLeft <= 0) {
+                    gameState.badges.survivor = true;
+                    triggerGameOver("TIME IS UP");
+                }
+            }, 1000);
+
+            requestAnimationFrame((ts) => {
+                lastTime = ts;
+                gameLoop(ts);
+            });
+        }
+
+        /* ================= GAME OVER & DEBRIEF ================= */
+
+        function triggerGameOver(reason) {
+            gameState.isPlaying = false;
+            clearInterval(timeInterval);
+            AudioSys.stopBGM();
+            window.removeEventListener('resize', resizeCanvas);
+            
+            if(gameState.score >= 0 && gameState.timeLeft <= 0) {
+                AudioSys.sfxWin();
+                buildDebrief(true, reason);
+                doConfetti();
+            } else {
+                AudioSys.sfxGameOver();
+                buildDebrief(false, reason);
+            }
+            
+            setTimeout(() => {
+                showScreen('result');
+            }, 1000); // 1 sec delay to see last action
+        }
+
+        function buildDebrief(isWin, reason) {
+            document.getElementById('resultPlayerInfo').innerText = `Operator: ${gameState.playerName} | NIK: ${gameState.playerNIK}`;
+            document.getElementById('finalScore').innerText = gameState.score;
+            document.getElementById('finalScore').className = gameState.score >= 0 ? "font-cyber text-4xl font-bold text-neonCyan" : "font-cyber text-4xl font-bold text-neonPink";
+            
+            const titleEl = document.getElementById('resultTitle');
+            const statusEl = document.getElementById('resultStatus');
+            
+            if(isWin) {
+                titleEl.innerText = "MISSION SUCCESS";
+                titleEl.className = "font-cyber text-3xl mb-1 text-center neon-text-cyan text-neonCyan";
+                statusEl.className = "p-3 mb-6 rounded text-center font-bold text-sm bg-green-900/50 border border-green-500 text-green-200";
+                
+                let feedbackMsg = "Luar biasa! Saldo Kepercayaanmu positif. Kamu siap membangun kolaborasi tim yang hebat.";
+                if(gameState.score < 30) feedbackMsg = "Misi selesai, namun Saldo Kepercayaanmu masih pas-pasan. Terus tingkatkan 'Setoran' di tempat kerja.";
+                statusEl.innerText = feedbackMsg;
+            } else {
+                titleEl.innerText = "MISSION FAILED";
+                titleEl.className = "font-cyber text-3xl mb-1 text-center neon-text-pink text-neonPink";
+                statusEl.className = "p-3 mb-6 rounded text-center font-bold text-sm bg-red-900/50 border border-red-500 text-red-200";
+                statusEl.innerText = `Kegagalan Sistem: ${reason}. Tarikan (Withdrawal) menghancurkan kepercayaan tim. Mari evaluasi kembali tindakanmu.`;
+            }
+
+            // Render Badges
+            const badgesDiv = document.getElementById('badgesContainer');
+            badgesDiv.innerHTML = '';
+            if(gameState.badges.survivor) badgesDiv.innerHTML += `<div class="bg-gray-800 p-2 rounded text-center w-24"><div class="text-2xl mb-1">⏱️</div><div class="text-[10px] text-gray-300">Survivor 60s</div></div>`;
+            if(gameState.badges.highScore) badgesDiv.innerHTML += `<div class="bg-gray-800 p-2 rounded text-center w-24"><div class="text-2xl mb-1">🏅</div><div class="text-[10px] text-gray-300">EBA Master</div></div>`;
+            if(badgesDiv.innerHTML === '') badgesDiv.innerHTML = `<p class="text-xs text-gray-500 w-full text-center">Belum ada lencana yang diraih. Coba lagi!</p>`;
+
+            // Process History to get unique feedback
+            const feedbackList = document.getElementById('feedbackList');
+            feedbackList.innerHTML = '';
+            
+            // Aggregate history to prevent spamming the same feedback
+            const summary = {};
+            gameState.history.forEach(h => {
+                if(!summary[h.item]) {
+                    summary[h.item] = { ...h, count: 1 };
+                } else {
+                    summary[h.item].count++;
+                }
+            });
+
+            for(let key in summary) {
+                let item = summary[key];
+                let bgClass = item.isCorrect ? "bg-green-900/20 border-green-700/50" : "bg-red-900/20 border-red-700/50";
+                let icon = item.isCorrect ? "✅" : "❌";
+                let actText = "";
+                
+                if(item.type === 'deposit' && item.action === 'slashed') actText = "Berhasil Menebas (Setoran)";
+                if(item.type === 'deposit' && item.action === 'ignored') actText = "Terlewatkan (Kehilangan Setoran)";
+                if(item.type === 'withdrawal' && item.action === 'slashed') actText = "Salah Tebas (Terkena Tarikan)";
+                if(item.type === 'withdrawal' && item.action === 'ignored') actText = "Berhasil Menghindari (Tarikan)";
+
+                let el = document.createElement('div');
+                el.className = `p-3 border rounded flex flex-col ${bgClass}`;
+                el.innerHTML = `
+                    <div class="flex items-start justify-between mb-1">
+                        <strong class="text-white">${icon} ${item.item}</strong>
+                        <span class="text-[10px] bg-gray-800 px-2 py-0.5 rounded">${actText}</span>
+                    </div>
+                    <p class="text-gray-400 text-xs italic">${item.desc}</p>
+                `;
+                feedbackList.appendChild(el);
+            }
+        }
+
+        function resetGame() {
+            showScreen('gateway');
+        }
+
+        // --- Confetti Effect for Debrief ---
+        function doConfetti() {
+            const confCanvas = document.getElementById('confettiCanvas');
+            const cCtx = confCanvas.getContext('2d');
+            confCanvas.width = confCanvas.offsetWidth;
+            confCanvas.height = confCanvas.offsetHeight;
+            
+            let confettis = [];
+            const colors = ['#00f3ff', '#bc13fe', '#ffffff'];
+            
+            for(let i=0; i<100; i++){
+                confettis.push({
+                    x: Math.random() * confCanvas.width,
+                    y: Math.random() * confCanvas.height - confCanvas.height,
+                    w: Math.random() * 10 + 5,
+                    h: Math.random() * 5 + 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    vy: Math.random() * 3 + 2,
+                    vx: Math.random() * 2 - 1,
+                    rot: Math.random() * 360,
+                    rotSpeed: Math.random() * 10 - 5
+                });
+            }
+
+            function renderConfetti() {
+                if(document.getElementById('screen-result').classList.contains('active')){
+                    cCtx.clearRect(0,0,confCanvas.width, confCanvas.height);
+                    confettis.forEach(c => {
+                        c.y += c.vy;
+                        c.x += c.vx;
+                        c.rot += c.rotSpeed;
+                        if(c.y > confCanvas.height) c.y = -10;
+                        
+                        cCtx.save();
+                        cCtx.translate(c.x, c.y);
+                        cCtx.rotate(c.rot * Math.PI / 180);
+                        cCtx.fillStyle = c.color;
+                        cCtx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+                        cCtx.restore();
+                    });
+                    requestAnimationFrame(renderConfetti);
+                }
+            }
+            renderConfetti();
+        }
+        
+        // CSS specific for scrollbar in debrief
+        document.head.insertAdjacentHTML("beforeend", `<style>
+            .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #00f3ff; border-radius: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #bc13fe; }
+        </style>`);
+        
+    </script>
+</body>
+</html>
